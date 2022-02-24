@@ -157,23 +157,16 @@ func ExampleTranscript() {
 	}
 
 	// 通过时间范围查询数据
-	start := time.Now().AddDate(0, 0, -1).Format("2006-01-02 15:04:05.000")
-	end := time.Now().AddDate(0, 0, 1).Format("2006-01-02 15:04:05.000")
-	rows = db.mustQuery(fmt.Sprintf("select * from '%s' where time between '%s' and '%s'", tableName, start, end))
-	for rows.Next() {
-		rows.Scan(&studentTranscipts.time, &studentTranscipts.id, &studentTranscipts.studentName, &studentTranscipts.subjectNo, &studentTranscipts.subjectName, &studentTranscipts.score)
-	}
-
 	rows = db.mustQuery("select * from transcipt where time between ? and ?", time.Now().AddDate(0, 0, -1), time.Now().AddDate(0, 0, 1))
 	for rows.Next() {
 		rows.Scan(&studentTranscipts.time, &studentTranscipts.id, &studentTranscipts.studentName, &studentTranscipts.subjectNo, &studentTranscipts.subjectName, &studentTranscipts.score)
-		fmt.Printf("Current student transcipts, name: %s, score: %d\n", studentTranscipts.studentName, studentTranscipts.score)
+		fmt.Printf("Current student transcipts, time: %s, name: %s, score: %d\n", studentTranscipts.time.Format("2006-01-02 15:04:05.999"), studentTranscipts.studentName, studentTranscipts.score)
 	}
 
 	rows = db.mustQuery("select * from transcipt where time between ? and ? and student_name = ?", time.Now().AddDate(0, 0, -1), time.Now().AddDate(0, 0, 1), "Faker")
 	for rows.Next() {
 		rows.Scan(&studentTranscipts.time, &studentTranscipts.id, &studentTranscipts.studentName, &studentTranscipts.subjectNo, &studentTranscipts.subjectName, &studentTranscipts.score)
-		fmt.Printf("Current student transcipts, name: %s, score: %d\n", studentTranscipts.studentName, studentTranscipts.score)
+		fmt.Printf("Current student transcipts, time: %s, name: %s, score: %d\n", studentTranscipts.time.Format("2006-01-02 15:04:05.999"), studentTranscipts.studentName, studentTranscipts.score)
 	}
 }
 

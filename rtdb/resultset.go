@@ -55,17 +55,17 @@ func (r *rtdbRows) Next(dest []driver.Value) error {
 	return r.fetchOne(dest)
 }
 
-// HasNextResultSet always return false because rtdb dose not support multuiple result set.
+// HasNextResultSet always return false because rtdb dose not support multiple result set.
 func (r *rtdbRows) HasNextResultSet() bool {
 	return false
 }
 
-// HasNextResultSet always return nil because rtdb dose not support multuiple result set.
+// NextResultSet always return nil because rtdb dose not support multiple result set.
 func (r *rtdbRows) NextResultSet() error {
 	return nil
 }
 
-// fetchOne fetch one row from rtdb connection
+// fetchOne fetch one row from rtdb connection.
 func (r *rtdbRows) fetchOne(dest []driver.Value) error {
 	rc := r.rc
 	if r.readDone() {
@@ -97,7 +97,6 @@ func (r *rtdbRows) ColumnTypeScanType(i int) reflect.Type {
 	return r.resultSet.columns[i].scanType()
 }
 
-// rtdb dose not support column type with precision scale.
 func (r *rtdbRows) ColumnTypePrecisionScale(i int) (int64, int64, bool) {
 	return -1, -1, false
 }
