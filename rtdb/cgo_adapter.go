@@ -33,11 +33,11 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"io"
+	"time"
 	"unsafe"
 )
 
 const (
-	DLL_PATH                 = "../../dll"
 	MAX_FIELD_COUNT   uint32 = 1024
 	VOID_POINTER_SIZE        = unsafe.Sizeof(unsafe.Pointer(nil))
 )
@@ -64,7 +64,7 @@ type RtdbAdapter struct {
 	result       unsafe.Pointer
 	fields       []rtdbField
 	affectedRows uint64
-	insertId     uint64  // TODO: insertId value always = 0;in the future, need to handle this.
+	insertId     uint64
 	cursor       RowsPtr // current row cursor, when read no rows, cursor will be nil.
 	status       AtomicInt16
 }
@@ -72,7 +72,6 @@ type RtdbAdapter struct {
 func NewRtdbAdapter(host string, port int, user string, password string) *RtdbAdapter {
 	a := &RtdbAdapter{}
 	a.connStr = buildConnStr(host, port, user, password)
-	a.dllPath = DLL_PATH
 
 	rtdbClient := unsafe.Pointer(C.tsdb_new())
 	a.rtdbClient = rtdbClient
@@ -100,6 +99,7 @@ func (a *RtdbAdapter) isConnected() bool {
 	return a.getStatus() >= rtdbAdapterStatusConnected
 }
 
+// CgoConnect 使用Cgo调用C函数进行数据库连接
 func (a *RtdbAdapter) CgoConnect() error {
 	if a.isConnected() {
 		rtdbLogger.Printf("Connection is not allowed in the current state, current state: %d\n", a.getStatus())
@@ -114,6 +114,7 @@ func (a *RtdbAdapter) CgoConnect() error {
 	return nil
 }
 
+// CgoDisconnect 使用Cgo调用C函数断开数据库连接
 func (a *RtdbAdapter) CgoDisconnect() error {
 	if !a.isConnected() {
 		rtdbLogger.Printf("Connection destruction is not allowed in the current state, current state: %d\n", a.getStatus())
@@ -126,6 +127,7 @@ func (a *RtdbAdapter) CgoDisconnect() error {
 	return nil
 }
 
+// CgoQuery 使用Cgo调用C函数执行一条数据库查询
 func (a *RtdbAdapter) CgoQuery(sql string, charset string, db string) error {
 	var charsetin string
 	if charset == "" {
@@ -165,6 +167,7 @@ func (a *RtdbAdapter) readDone() bool {
 	return a.getStatus() == rtdbAdapterStatusEOF
 }
 
+// CgoStoreResult 使用Cgo调用C函数获取查询的结果集
 func (a *RtdbAdapter) CgoStoreResult() error {
 	result := C.tsdb_store_result_v2(a.rtdbClient)
 	if result != nil {
@@ -173,6 +176,7 @@ func (a *RtdbAdapter) CgoStoreResult() error {
 	return nil
 }
 
+// CgoFreeResult 使用Cgo调用C函数释放查询结果集的内存
 func (a *RtdbAdapter) CgoFreeResult() error {
 	if err := convertErr(int(C.tsdb_free_result(a.rtdbClient, a.result))); err != nil {
 		return err
@@ -180,7 +184,7 @@ func (a *RtdbAdapter) CgoFreeResult() error {
 	return nil
 }
 
-// CleanUp clear the C language memory
+// CleanUp 使用Cgo调用C函数进行最终的内存清理
 func (a *RtdbAdapter) CleanUp() error {
 	if a.rtdbClient == nil {
 		return nil
@@ -199,12 +203,12 @@ func (a *RtdbAdapter) CleanUp() error {
 	return nil
 }
 
-// CgoKillMe always return nil value because the C interface function tsdb_kill_me return value is void.
 func (a *RtdbAdapter) CgoKillMe() error {
 	C.tsdb_kill_me(a.rtdbClient)
 	return nil
 }
 
+// FetchFields 获取数据库列的信息
 func (a *RtdbAdapter) FetchFields() []rtdbField {
 	if len(a.fields) > 0 {
 		return a.fields
@@ -267,6 +271,7 @@ func (a *RtdbAdapter) IsResultSetEmpty() bool {
 	return a.result == nil
 }
 
+// FetchOne 使用Cgo调用获取结果集的C函数，然后将C数据库结构转换为Go数据类型.
 func (a *RtdbAdapter) FetchOne() (values []interface{}, err error) {
 	if a.getStatus() != rtdbAdapterStatusFetchingResult {
 		return nil, driver.ErrSkip
@@ -312,9 +317,10 @@ func (a *RtdbAdapter) FetchOne() (values []interface{}, err error) {
 				value = false
 			}
 		case fieldTypeDatetime:
-			// TODO: handle datetime field type
+			v := int64(*(*(**C.int64_t)(unsafe.Pointer(uintptr(unsafe.Pointer(row)) + (VOID_POINTER_SIZE * uintptr(i))))))
+			value = time.Unix(v/1000, 0)
 		case fieldTypeNull:
-			// TODO: handle null field type
+			value = nil
 		}
 		values = append(values, value)
 	}
